@@ -12,3 +12,4 @@ name = "server"
 path = "src/bin/server.rs"
 
 [dependencies]
+httparse = "1.8"

@@ -5,7 +5,7 @@ use std::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut sender = TcpStream::connect("172.30.1.7:10000")?;
+    let mut sender = TcpStream::connect("localhost:10000")?;
     let mut receiver = sender.try_clone()?;
 
     thread::spawn(move || {
