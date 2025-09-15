@@ -1,5 +1,6 @@
-use std::{fs, io::{Read, Write}, net::{SocketAddr, TcpListener, TcpStream}, thread::{self, spawn}};
+use std::{collections::HashMap, fs, io::{Read, Write}, net::{SocketAddr, TcpListener, TcpStream}};
 use chat_server::ThreadPool;
+use urlencoding::decode;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
@@ -11,10 +12,32 @@ fn main() {
     }
 }
 
-// POST 요청의 body 추출
+// POST 요청의 body 추출 함수
 fn request_body(buffer: &[u8]) -> String {
+    // 버퍼의 내용을 utf8 -> string으로 변환
     let request = String::from_utf8_lossy(buffer);
+    // \r\n\r\n 기준으로 헤더와 바디가 나뉘므로 2개로 나눠서 바디부분만 추출
     request.split("\r\n\r\n").nth(1).unwrap_or("").to_string()
+}
+
+// HTML 형식 파싱 함수
+fn parse_html(body: &str) -> HashMap<String, String> {
+    // & 기준으로 잘라서 key=value 형식으로 pair에 저장
+    body.split('&').filter_map(|pair|{
+        // = 기준으로 key, value 분할
+        let mut split = pair.splitn(2, '=');
+        let key = split.next()?;
+        let value = split.next()?;
+        // Some((key, value)) 값으로 변환
+        Some((
+            // key 값을 &str -> String 타입으로 변환
+            key.to_string(),
+            // URL 인코딩 값을 실제 문자로 변환 후, Cow<str>값에서 소유권을 가져와서 String으로 변환
+            decode(value).unwrap_or_else(|_| value.into()).into_owned(),
+        ))
+    })
+    // 모든 튜플값을 HashMap 타입으로 변환
+    .collect()
 }
 
 // http 연결 함수
@@ -54,8 +77,11 @@ fn http_handle_connection(mut stream: TcpStream, mut address: SocketAddr) {
         ),
         // 회원가입 정보 수신
         ("POST", "/signup") => {
-            // POST body 추출
+            // POST 바디 부분만 추출
             let body = request_body(&buffer);
+            // 추출한 내용 파싱
+            let parse = parse_html(&body);
+
             let response_body = format!(
                 "<h1>회원가입 완료!</h1>\
                 <p>{}</p>\

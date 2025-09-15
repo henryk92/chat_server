@@ -13,3 +13,4 @@ path = "src/bin/server.rs"
 
 [dependencies]
 httparse = "1.8"
+urlencoding = "2.1"
